@@ -19,7 +19,7 @@ if [[ "${TRAVIS_PULL_REQUEST}" != false ]]; then
 fi
 
 # TODO: Change to master
-if ! [[ "${TRAVIS_BRANCH}" == "rebase4" ]]; then
+if ! [[ "${TRAVIS_BRANCH}" == "rebase5" ]]; then
     echo "This isn't the master branch"
     exit 0
 fi
@@ -51,9 +51,9 @@ cd inexor
 # TODO: change to master
 git fetch --all
 # TODO: change to master
-git checkout rebase4
+git checkout rebase5
 # TODO: change to master
-git reset --hard origin/rebase4
+git reset --hard origin/rebase5
 cd ../
 
 
