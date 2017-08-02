@@ -13,7 +13,6 @@ requires = (("InexorGlueGen/0.6.0alpha@inexorgame/stable"),
             ("CEF/3.2704.1424.gc3f0a5b@inexorgame/testing") # not self-contained
         )
 
-
 options = '''
   zlib:shared=False
   gtest:shared=False

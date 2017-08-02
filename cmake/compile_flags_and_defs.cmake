@@ -111,7 +111,6 @@ list(APPEND MSVC_LINKER_FLAGS_RELEASE
   /INCREMENTAL:NO                       # Linking incremental (faster) does not work anymore with the previous two optimizations
   /LTCG                                 # Link-time Code Generation: further optimisations in the linker stage.
   /NODEFAULTLIB:MSVCRT                  # This fixes linking for 32-bit
-  /NODEFAULTLIB:LIBCMT.lib              # This fixes linking for 32-bit
   )
 
 
