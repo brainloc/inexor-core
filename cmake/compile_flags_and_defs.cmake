@@ -2,7 +2,7 @@
 ## Note: This file needs to be included **after** platform_detection.cmake.
 
 
-## GCC and CLang 
+## GCC and CLang
 list(APPEND GNU_OR_CLANG_COMPILER_FLAGS
   -fomit-frame-pointer            # Don't keep the frame pointer for functions that don't need one
   -fno-strict-aliasing            # Avoid assumptions regarding non-aliasing of objects of different types
@@ -10,7 +10,7 @@ list(APPEND GNU_OR_CLANG_COMPILER_FLAGS
   -pipe                           # Use pipes rather than temporary files for communication between build stages
   -Wall                           # Enable all warnings
   -Wno-switch                     # Execpt Warnings for missing switch cases
-  -Wno-deprecated-declarations    # 
+  -Wno-deprecated-declarations    #
   -Wno-missing-braces             #
   -fdiagnostics-show-option       # Show Warning IDs
   -g                              # Generate debug information
@@ -100,12 +100,18 @@ list(APPEND MSVC_LINKER_FLAGS
   /DEBUG                                # Generate debug information (even for release builds for our stackwalker)
   /MANIFEST:NO                          # No default manifest
   /SAFESEH:NO                           # Do Not Create a table of safe exception handlers (binary incompatible)
+
+  )
+list(APPEND MSVC_LINKER_FLAGS_DEBUG
+  /NODEFAULTLIB:MSVCRTD                 # This fixes linking for 32-bit
   )
 list(APPEND MSVC_LINKER_FLAGS_RELEASE
   /OPT:REF                              # Eliminate Unreferenced Data (to revert changes to the binary caused by /DEBUG)
   /OPT:ICF                              # Remove Redundant COMDATs (to revert changes to the binary caused by /DEBUG)
   /INCREMENTAL:NO                       # Linking incremental (faster) does not work anymore with the previous two optimizations
   /LTCG                                 # Link-time Code Generation: further optimisations in the linker stage.
+  /NODEFAULTLIB:MSVCRT                  # This fixes linking for 32-bit
+  /NODEFAULTLIB:LIBCMT.lib              # This fixes linking for 32-bit
   )
 
 
@@ -169,9 +175,8 @@ if(OS_WINDOWS)
   add_definitions(-DWIN32 -D_WIN32 -D_WINDOWS -DWINDOWS -DNOMINMAX -D_WIN32_WINNT=0x0600 -D_MATH_DEFINES_DEFINED -DWIN32_LEAN_AND_MEAN )
   if(X64)
     add_definitions(-DWIN64)
-  endif()	
+  endif()
 endif()
 
 get_directory_property(DEFINITIONS              COMPILE_DEFINITIONS)
 message(STATUS "Platform definitions:           ${DEFINITIONS}")
-

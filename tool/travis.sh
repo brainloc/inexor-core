@@ -2,10 +2,7 @@
 #
 # Structure
 # * Utility functions
-# * Installation target implementations
-# * Nightly build/APIDOC uploading
 # * Compiling and testing
-# * Targets as called by .travis.yml
 # * Main routine
 
 ## UTILITY FUNCTIONS #######################################
@@ -55,68 +52,103 @@ external_pull_request() {
   fi
 }
 
-# upload remote_path local_path [local_paths]...
-#
-# Upload one or more files to nightly.inexor.org
-upload() {
-  # Fix an issue where upload directory gets specified by subsequent upload() calls
-  ncftpput -R -v -u "$FTP_USER" -p "$FTP_PASSWORD" nightly.inexor.org /linux/ "$@" || true
+## increment the version number based on the last tag.
+incremented_version()
+{
+  local major_version=`echo -e "${last_tag}" | sed "s/^\(.*\)\\.[0-9]\+\.[0-9]\+-alpha$/\1/"`
+  local minor_version=`echo -e "${last_tag}" | sed "s/^[0-9]\+\.\(.*\)\.[0-9]\+-alpha$/\1/"`
+  local patch_version=`echo -e "${last_tag}" | sed "s/^[0-9]\+\.[0-9]\+\.\(.*\)-alpha$/\1/"`
+
+
+  local new_patch_version=$((patch_version+1))
+  local new_version="$major_version.$minor_version.$new_patch_version-alpha"
+  echo $new_version
 }
 
-## INSTALLATION ROUTINES ###################################
+# The package.json contains PLACEHOLDERs we need to replace.
+# On deploy (so if this is a tagged build), we want to publish to npm as well.
+update_package_json()
+{
+  local package_json_path="${code}/package.json"
 
-install_additional_repos() {
-  echo -e "\ndeb http://archive.ubuntu.com/ubuntu zesty "{main,multiverse,universe,restricted} >> /etc/apt/sources.list
+  # Cut the "-alpha" from the version
+  local package_version=`echo -e "${INEXOR_VERSION}" | sed "s/^\(.*\)-alpha$/\1/"`
+
+  # Replace the version in the file.
+  sed -i -e "s/VERSION_PLACEHOLDER/${package_version}/g" "${package_json_path}"
+
+  local package_name_extension="linux64"
+
+  # Make the package name platform specific
+  sed -i -e "s/PLATFORM_PLACEHOLDER/${package_name_extension}/g" "${package_json_path}"
 }
 
-install_tool() {
-  apt-get -y -t trusty install ncftp
+publish_to_npm()
+{
+  # Create a npmrc file containing our npm token
+  echo "@inexorgame:registry=https://registry.npmjs.org/
+//registry.npmjs.org/:_authToken=${NPM_TOKEN}" > .npmrc
+
+  update_package_json
+  npm pack
+  npm publish --access public
 }
 
-install_linux() {
-  apt-key adv --keyserver keyserver.ubuntu.com --recv-keys FB1BF5BF09FA0AB7
+# increment version and create a tag on github.
+# (each time we push to master)
+create_tag() {
+  if test -n "$TRAVIS_TAG"; then
+    echo >&2 -e "===============\n" \
+      "Skipping tag creation, because this build\n" \
+      "got triggered by a tag.\n" \
+      "===============\n"
+  elif [ "$TRAVIS_BRANCH" = "master" -a "$TRAVIS_PULL_REQUEST" = "false" ]; then
+    # direct push to master
 
-  install_additional_repos
-  apt-get update
+    export new_version=$(incremented_version)
 
+    git config --global user.email "travis@travis-ci.org"
+    git config --global user.name "Travis"
 
-  install_tool
+    git tag -a -m "automatic tag creation on push to master branch" "${new_version}"
+    git push -q https://$GITHUB_TOKEN@github.com/inexorgame/inexor-core --tags
 
-  apt-get -y -t zesty install --only-upgrade libfontconfig1
-  apt-get -y -t zesty install build-essential binutils nasm
-  python -m pip install conan
-
-  # upgrade cmake
-  mkdir $HOME/usr
-  export PATH="$HOME/usr/bin:$PATH"
-  wget https://cmake.org/files/v3.8/cmake-3.8.2-Linux-x86_64.sh
-  chmod +x cmake-3.8.2-Linux-x86_64.sh
-  ./cmake-3.8.2-Linux-x86_64.sh --prefix=$HOME/usr --exclude-subdir --skip-license
+  else
+    echo >&2 -e "===============\n" \
+      "Skipping tag creation, because this is \n" \
+      "not a direct commit to master.\n" \
+      "===============\n"
+      export new_version=$(incremented_version)
+      echo >&2 -e $new_version
+  fi
 }
 
-# Install routines for each target
 
-install_win64() {
-  install_additional_repos
-  apt-get update
-  install_tool
-  apt-get -y -t zesty install mingw-w64
-}
-install_win32() {
-  install_win64
-}
-install_linux_clang() {
-  install_linux
-  apt-get -y -t zesty install clang-3.9 binutils
-}
-install_linux_gcc() {
-  install_linux
-  apt-get -y -t zesty install gcc-6 g++-6
-}
-install_apidoc() {
-  apt-get update
-  install_tool
-  apt-get install -y -t trusty doxygen
+# ACTUALLY COMPILING AND TESTING INEXOR ####################
+
+build() {
+  (
+    mkcd "/tmp/inexor-build"
+
+    conan --version
+
+    # TODO: FIXME: We need a hardcoded workaround for GCC5.4 to link gtest successfully
+    #if [[ $CC == "gcc-5" ]]; then
+        #conan install gtest/1.8.0@lasote/stable --build -s compiler="$CONAN_COMPILER" -s compiler.version="$CONAN_COMPILER_VERSION" -s compiler.libcxx="libstdc++11" -e CC="$CC" -e CXX="$CXX"
+    #fi
+
+    conan remote add inexor https://api.bintray.com/conan/inexorgame/inexor-conan --insert
+
+    if test "$NIGHTLY" = conan; then
+      echo "executed conan install "$gitroot" --scope build_all=1 --build -s compiler=$CONAN_COMPILER -s compiler.version=$CONAN_COMPILER_VERSION -s compiler.libcxx=libstdc++11 -e CC=$CC -e CXX=$CXX"
+      conan install "$gitroot" --scope build_all=1 --build -s compiler="$CONAN_COMPILER" -s compiler.version="$CONAN_COMPILER_VERSION" -s compiler.libcxx="libstdc++11" -e CC="$CC" -e CXX="$CXX"
+    else
+      echo "executed conan install "$gitroot" --scope build_all=1 --scope create_package=1 --build=missing -s compiler=$CONAN_COMPILER -s compiler.version=$CONAN_COMPILER_VERSION -s compiler.libcxx=libstdc++11 -e CC=$CC -e CXX=$CXX"
+      conan install "$gitroot" --scope build_all=1 --scope create_package=1 --build=missing -s compiler="$CONAN_COMPILER" -s compiler.version="$CONAN_COMPILER_VERSION" -s     compiler.libcxx="libstdc++11" -e CC="$CC" -e CXX="$CXX"
+    fi
+
+    conan build "$gitroot"
+  )
 }
 
 install_new_version_tagger() {
@@ -129,8 +161,37 @@ install_osx() {
   exit 0
 }
 
-## Automatic Creation of tags and generation of the doxygen documentation #################
 
+run_tests() {
+  if contains "$TARGET" linux; then
+    "${bin}/unit_tests"
+  else
+    echo >&2 "ERROR: UNKNOWN TRAVIS TARGET: ${TARGET}"
+    exit 23
+  fi
+}
+
+# ATTENTION:
+# Please USE the following naming format for any files uploaded to our distribution server
+# <BRANCHNAME>-<BUILDNUMBER>-<TARGET_NAME>.EXTENSION
+# where <PACKAGENAME> is NOT CONTAINING any -
+# correct: master-1043.2-linux_gcc.txt
+# correct: refactor-992.2-apidoc.hip
+# exception: master-latest-<TARGET_NAME>.zip
+# wrong: ...-linux_gcc-1043.2.zip
+
+## UPLOADING NIGHTLY BUILDS AND THE APIDOC #################
+
+# upload remote_path local_path [local_paths]...
+#
+# Upload one or more files to our nightly or dependencies server
+# Variables are defined on the Travis website
+upload() {
+  # Fix an issue where upload directory gets specified by subsequent upload() calls
+  ncftpput -R -v -u "$NIGHTLY_USER" -p "$NIGHTLY_PASSWORD" "$FTP_DOMAIN" / "$@"
+}
+
+## Automatic Creation of tags and generation of the doxygen documentation #################
 create_apidoc() {
   (
     local zipname="Inexor-${last_tag}-doc.zip"
@@ -144,6 +205,7 @@ create_apidoc() {
     # upload "${zipfolder}/${zipname}"
   )
 }
+
 
 ## increment the version number based on the last tag.
 incremented_version()
@@ -206,22 +268,35 @@ build() {
   )
 }
 
-run_tests() {
-  if contains "$TARGET" linux; then
-    "${bin}/unit_tests"
-  elif contains "$TARGET" win; then
-    echo >&2 "Sorry, win is not supported for testing yet."
-    exit 0
-  else
-    echo >&2 "ERROR: UNKNOWN TRAVIS TARGET: ${TARGET}"
-    exit 23
+
+# Upload nightly
+target_after_success() {
+  if test "$TARGET" != apidoc; then
+    #external_pull_request || nigthly_build || true
+    if test "$NIGHTLY" = true; then
+        # Upload zip nightly package to our FTP
+        nigthly_build
+    fi
+    if test "$NIGHTLY" = conan; then
+        # Upload all conan packages to conan.io
+        conan user -p "${NIGHTLY_PASSWORD}" -r inexor "${NIGHTLY_USER}"
+        set -f
+        conan upload --all --force -r inexor --retry 3 --retry_wait 10 --confirm "*stable*"
+        set +f
+    fi
   fi
+  exit 0
 }
 
-## TARGETS CALLED BY TRAVIS ################################
-
-target_before_install() {
-  sudo "$script" install_"$TARGET"
+# Upload nightly
+target_after_deploy() {
+  if test "$TARGET" != apidoc; then
+    if test -n "$TRAVIS_TAG"; then
+      if test "$CC" == "gcc"; then
+        publish_to_npm
+      fi
+    fi
+  fi
   exit 0
 }
 
@@ -233,31 +308,73 @@ target_script() {
   else
     build
     run_tests
+    target_after_success
   fi
-  exit 0
-}
-
-# Upload nightly
-target_after_success() {
- # if test "$TARGET" != apidoc; then
- #   external_pull_request || true
- # fi
   exit 0
 }
 
 ## MAIN ####################################################
 
+# this makes the entire script fail if one commands fail
 set -e
 
 script="$0"
 tool="`dirname "$0"`"
 code="${tool}/.."
 bin="${code}/bin"
+TARGET="$3"
+#CMAKE_FLAGS="$4"
+CONAN_COMPILER="$4"
+CONAN_COMPILER_VERSION="$5"
+export CC="$6"
+export CXX="$7"
 
-export main_repo="inexor-game/code"
-export branch="$TRAVIS_BRANCH" # The branch we're on
-export jobno="$TRAVIS_JOB_NUMBER" # The job number
-export commit="${TRAVIS_COMMIT}"
+export commit="$8"
+export branch="$9" # The branch we're on
+export jobno="${10}" # The job number
+# Nightly is either true, false or conan
+NIGHTLY="${11}"
+NIGHTLY_USER="${12}"
+NIGHTLY_PASSWORD="${13}"
+FTP_DOMAIN="${14}"
+
+
+# Name of this build
+export build="$(echo "${branch}-${jobno}" | sed 's#/#-#g')-${TARGET}"
+export main_repo="inexorgame/inexor-core"
+
+# Workaround Boost.Build problem to not be able to found Clang
+if [[ $CC == clang* ]]; then
+  sudo ln -sf /usr/bin/${CC} /usr/bin/clang
+  sudo ln -sf /usr/bin/${CXX} /usr/bin/clang++
+fi
+
+# Just to make sure that no package uses the wrong GCC version...
+if [[ $CC == gcc* ]]; then
+  sudo ln -sf /usr/bin/${CC} /usr/bin/gcc
+  sudo ln -sf /usr/bin/${CXX} /usr/bin/gcc++
+fi
+
+
+if [ -z "$2" ]; then
+  export gitroot="/inexor"
+else
+  # this makes it possible to run this script successfull
+  # even if doesn't get called from the root directory
+  # of THIS repository
+  # required to make inexor-game/ci-prebuilds working
+  export gitroot="/inexor/$2"
+fi
+
+self_pull_request && {
+  echo >&2 -e "Skipping build, because this is a pull " \
+    "request with a branch in the main repo.\n"         \
+    "This means, there should already be a CI job for " \
+    "this branch. No need to do things twice."
+  exit 0
+}
+
+cd "$gitroot"
 
 # Tags do not get fetched from travis usually.
 git fetch origin 'refs/tags/*:refs/tags/*'
@@ -273,17 +390,4 @@ else
   export INEXOR_VERSION=$(incremented_version)
 fi
 
-# Name of this build
-export build="$(echo "${branch}-${jobno}" | sed 's#/#-#g')-${TARGET}"
-export gitroot="$TRAVIS_BUILD_DIR"
-
-self_pull_request && {
-  echo >&2 -e "Skipping build, because this is a pull " \
-    "request with a branch in the main repo.\n"         \
-    "This means, there should already be a ci job for " \
-    "this branch. No need to do things twice."
-  exit 0
-}
-
-cd "$gitroot"
 "$@"  # Call the desired function
