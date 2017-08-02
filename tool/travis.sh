@@ -273,10 +273,10 @@ build() {
 target_after_success() {
   if test "$TARGET" != apidoc; then
     #external_pull_request || nigthly_build || true
-    if test "$NIGHTLY" = true; then
+    #if test "$NIGHTLY" = true; then
         # Upload zip nightly package to our FTP
         # nigthly_build
-    fi
+    #fi
     if test "$NIGHTLY" = conan; then
         # Upload all conan packages to conan.io
         conan user -p "${NIGHTLY_PASSWORD}" -r inexor "${NIGHTLY_USER}"
