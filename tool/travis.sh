@@ -275,7 +275,7 @@ target_after_success() {
     #external_pull_request || nigthly_build || true
     if test "$NIGHTLY" = true; then
         # Upload zip nightly package to our FTP
-        nigthly_build
+        # nigthly_build
     fi
     if test "$NIGHTLY" = conan; then
         # Upload all conan packages to conan.io

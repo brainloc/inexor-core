@@ -19,7 +19,7 @@ if [[ "${TRAVIS_PULL_REQUEST}" != false ]]; then
 fi
 
 
-if ! [[ "${TRAVIS_BRANCH}" == "master" ]]; then
+if ! [[ "${TRAVIS_BRANCH}" == "croydon/dockerization+conan-packages" ]]; then
     echo "This isn't the master branch"
     exit 0
 fi
