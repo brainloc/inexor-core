@@ -50,8 +50,8 @@ echo "Update submodule in ci-prebuilds"
 cd inexor
 
 git fetch --all
-git checkout master
-git reset --hard origin/master
+git checkout croydon/dockerization+conan-packages
+git reset --hard origin/croydon/dockerization+conan-packages
 cd ../
 
 
