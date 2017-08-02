@@ -18,8 +18,8 @@ if [[ "${TRAVIS_PULL_REQUEST}" != false ]]; then
     exit 0
 fi
 
-# TODO: Change to master
-if ! [[ "${TRAVIS_BRANCH}" == "rebase5" ]]; then
+
+if ! [[ "${TRAVIS_BRANCH}" == "master" ]]; then
     echo "This isn't the master branch"
     exit 0
 fi
@@ -39,8 +39,8 @@ echo "Configure git"
 cd ..
 git clone --recursive https://github.com/inexorgame/ci-prebuilds.git "ci-prebuilds"
 cd "ci-prebuilds"
-# TODO: Change to master
-git checkout trial5
+
+git checkout master
 
 git config user.name ${GITHUB_BOT_NAME}
 git config user.email ${GITHUB_BOT_EMAIL}
@@ -48,12 +48,10 @@ git config user.email ${GITHUB_BOT_EMAIL}
 
 echo "Update submodule in ci-prebuilds"
 cd inexor
-# TODO: change to master
+
 git fetch --all
-# TODO: change to master
-git checkout rebase5
-# TODO: change to master
-git reset --hard origin/rebase5
+git checkout master
+git reset --hard origin/master
 cd ../
 
 
