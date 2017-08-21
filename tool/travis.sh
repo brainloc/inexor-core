@@ -148,6 +148,12 @@ build() {
     fi
 
     conan build "$gitroot"
+
+    # workaround that CPack sometimes fails on linux to copy the file to the final directory from the intermediate dir..
+    local tempdir="/tmp/inexor-build/_CPack_Packages/Linux/ZIP/"
+    local zipname="Inexor-${last_tag}-Linux.zip"
+    local outputdir="/tmp/inexor-build/"
+    mv -f -v -u "${tempdir}${zipname}" "${outputdir}" || true
   )
 }
 
@@ -234,7 +240,7 @@ create_tag() {
     export new_version=$(incremented_version)
 
     git config --global user.email "travis@travis-ci.org"
-    git config --global user.name "Travis"
+    git config --global user.name "InexorBot"
 
     git tag -a -m "automatic tag creation on push to master branch" "${new_version}"
     git push -q https://$GITHUB_TOKEN@github.com/inexorgame/inexor-core --tags
@@ -249,25 +255,6 @@ create_tag() {
   fi
 }
 
-# ACTUALLY COMPILING AND TESTING INEXOR ####################
-
-build() {
-  (
-    mkcd "/tmp/inexor-build"
-    conan
-    conan remote add inexor https://api.bintray.com/conan/inexorgame/inexor-conan --insert
-    echo "executed conan install "$gitroot" --scope build_all=1 --scope create_package=1 --build=missing -s compiler=$CONAN_COMPILER -s compiler.version=$CONAN_COMPILER_VERSION -s compiler.libcxx=libstdc++11"
-    conan install "$gitroot" --scope build_all=1 --scope create_package=1  --build=missing -s compiler="$CONAN_COMPILER" -s compiler.version="$CONAN_COMPILER_VERSION" -s compiler.libcxx="libstdc++11"
-    conan build "$gitroot"
-
-    # workaround that CPack sometimes fails on linux to copy the file to the final directory from the intermediate dir..
-    local tempdir="/tmp/inexor-build/_CPack_Packages/Linux/ZIP/"
-    local zipname="Inexor-${last_tag}-Linux.zip"
-    local outputdir="/tmp/inexor-build/"
-    mv -f -v -u "${tempdir}${zipname}" "${outputdir}" || true
-  )
-}
-
 
 # Upload nightly
 target_after_success() {
@@ -278,7 +265,7 @@ target_after_success() {
         # nigthly_build
     #fi
     if test "$NIGHTLY" = conan; then
-        # Upload all conan packages to conan.io
+        # Upload all conan packages to our Bintray repository
         conan user -p "${NIGHTLY_PASSWORD}" -r inexor "${NIGHTLY_USER}"
         set -f
         conan upload --all --force -r inexor --retry 3 --retry_wait 10 --confirm "*stable*"
