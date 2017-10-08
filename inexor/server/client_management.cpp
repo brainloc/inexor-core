@@ -3,6 +3,7 @@
 #include "inexor/server/gamemode/gamemode_server.hpp"
 #include "inexor/server/demos.hpp"
 #include "inexor/network/legacy/crypto.hpp"
+#include "inexor/network/IsLocalConnection.hpp"
 #include "inexor/network/legacy/cube_network.hpp"
 #include "inexor/util/Logging.hpp"
 #include "inexor/shared/cube.hpp"
@@ -464,6 +465,16 @@ bool player_connected(clientinfo *ci, const char *password)
     return true;
 }
 
+/// If client ci is from the same ip as this server -> make him priv_local.
+void promote_if_local_client(client *c)
+{
+    if(!c->peer) return;
+    clientinfo *ci = static_cast<clientinfo *>(c->info);
+
+    if(IsLocalConnection(c->peer->host->socket))
+        ci->privilege = PRIV_LOCAL;
+}
+
 client &add_client_connection()
 {
     client *c = NULL;
@@ -481,6 +492,7 @@ client &add_client_connection()
     c->info = new clientinfo;
     c->connected = true;
     client_count++;
+    promote_if_local_client(c);
     return *c;
 }
 
