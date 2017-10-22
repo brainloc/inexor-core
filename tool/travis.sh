@@ -51,49 +51,6 @@ external_pull_request() {
   fi
 }
 
-## increment the version number based on the last tag.
-incremented_version()
-{
-  local major_version=`echo -e "${last_tag}" | sed "s/^\(.*\)\\.[0-9]\+\.[0-9]\+-alpha$/\1/"`
-  local minor_version=`echo -e "${last_tag}" | sed "s/^[0-9]\+\.\(.*\)\.[0-9]\+-alpha$/\1/"`
-  local patch_version=`echo -e "${last_tag}" | sed "s/^[0-9]\+\.[0-9]\+\.\(.*\)-alpha$/\1/"`
-
-  local new_patch_version=$((patch_version+1))
-  local new_version="$major_version.$minor_version.$new_patch_version-alpha"
-  echo $new_version
-}
-
-
-# increment version and create a tag on GitHub
-# each time we push to master
-create_tag() {
-  if test -n "$TRAVIS_TAG"; then
-    echo >&2 -e "===============\n" \
-      "Skipping tag creation, because this build\n" \
-      "got triggered by a tag.\n" \
-      "===============\n"
-  elif [ "$TRAVIS_BRANCH" = "master" -a "$TRAVIS_PULL_REQUEST" = "false" ]; then
-    # direct push to master
-
-    export new_version=$(incremented_version)
-
-    git config --global user.email "travis@travis-ci.org"
-    git config --global user.name "Travis"
-
-    git tag -a -m "automatic tag creation on push to master branch" "${new_version}"
-    git push -q https://$GITHUB_TOKEN@github.com/inexorgame/inexor-core --tags
-
-  else
-    echo >&2 -e "===============\n" \
-      "Skipping tag creation, because this is \n" \
-      "not a direct commit to master.\n" \
-      "===============\n"
-      export new_version=$(incremented_version)
-      echo >&2 -e $new_version
-  fi
-}
-
-
 # ACTUALLY COMPILING AND TESTING INEXOR ####################
 
 build() {
@@ -126,12 +83,6 @@ build() {
 
 install_new_version_tagger() {
   return 0
-}
-
-install_osx() {
-  # if you need sudo for some stuff here, you need to adjust travis.yml and target_before_install()
-  #brew install sdl2
-  exit 0
 }
 
 
@@ -179,7 +130,6 @@ create_apidoc() {
   )
 }
 
-
 ## increment the version number based on the last tag.
 incremented_version()
 {
@@ -187,50 +137,27 @@ incremented_version()
   local minor_version=`echo -e "${last_tag}" | sed "s/^[0-9]\+\.\(.*\)\.[0-9]\+-alpha$/\1/"`
   local patch_version=`echo -e "${last_tag}" | sed "s/^[0-9]\+\.[0-9]\+\.\(.*\)-alpha$/\1/"`
 
-
   local new_patch_version=$((patch_version+1))
   local new_version="$major_version.$minor_version.$new_patch_version-alpha"
   echo $new_version
 }
 
-# increment version and create a tag on github.
-# (each time we push to master)
+# increment version and create a tag on GitHub
+# each time we push to master, check are in travis.yml
 create_tag() {
-  if test -n "$TRAVIS_TAG"; then
-    echo >&2 -e "===============\n" \
-      "Skipping tag creation, because this build\n" \
-      "got triggered by a tag.\n" \
-      "===============\n"
-  elif [ "$branch" = "master" -a "$TRAVIS_PULL_REQUEST" = "false" ]; then
-    # direct push to master
+  export new_version=$(incremented_version)
+  echo >&2 -e $new_version
 
-    export new_version=$(incremented_version)
+  git config --global user.email "travis@travis-ci.org"
+  git config --global user.name "InexorBot"
 
-    git config --global user.email "travis@travis-ci.org"
-    git config --global user.name "InexorBot"
-
-    git tag -a -m "automatic tag creation on push to master branch" "${new_version}"
-    git push -q https://$GITHUB_TOKEN@github.com/inexorgame/inexor-core --tags
-
-  else
-    echo >&2 -e "===============\n" \
-      "Skipping tag creation, because this is \n" \
-      "not a direct commit to master.\n" \
-      "===============\n"
-      export new_version=$(incremented_version)
-      echo >&2 -e $new_version
-  fi
+  git tag -a -m "Rolling release: automatic tag creation on push to master branch" "${new_version}"
+  git push -q https://$GITHUB_TOKEN@github.com/inexorgame/inexor-core --tags
 }
-
 
 # Upload nightly
 target_after_success() {
   if test "$TARGET" != apidoc; then
-    #external_pull_request || nigthly_build || true
-    #if test "$NIGHTLY" = true; then
-        # Upload zip nightly package to our FTP
-        # nigthly_build
-    #fi
     if test "$NIGHTLY" = conan; then
         # Upload all conan packages to our Bintray repository
         conan user -p "${NIGHTLY_PASSWORD}" -r inexor "${NIGHTLY_USER}"
