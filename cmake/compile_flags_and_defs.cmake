@@ -102,15 +102,11 @@ list(APPEND MSVC_LINKER_FLAGS
   /SAFESEH:NO                           # Do Not Create a table of safe exception handlers (binary incompatible)
 
   )
-list(APPEND MSVC_LINKER_FLAGS_DEBUG
-  /NODEFAULTLIB:MSVCRTD                 # This fixes linking for 32-bit
-  )
 list(APPEND MSVC_LINKER_FLAGS_RELEASE
   /OPT:REF                              # Eliminate Unreferenced Data (to revert changes to the binary caused by /DEBUG)
   /OPT:ICF                              # Remove Redundant COMDATs (to revert changes to the binary caused by /DEBUG)
   /INCREMENTAL:NO                       # Linking incremental (faster) does not work anymore with the previous two optimizations
   /LTCG                                 # Link-time Code Generation: further optimisations in the linker stage.
-  /NODEFAULTLIB:MSVCRT                  # This fixes linking for 32-bit
   )
 
 

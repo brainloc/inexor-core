@@ -22,11 +22,6 @@ notifications:
     on_success: never
     on_failure: change
 
-env:
-  global:
-    - secure: UUtdYLhd9+cY+bMrcRvvtjmsQBqM5L9zgzyLeQZLMmmWbHwLsfpQask9A8eD1oc1K1o0tYmK+Qk1flxNTbnUtlryPNgJxJ95a/TwLl1P9yN6plMleNbuwMs5dyS9VnmcK3LzDFuoje/9rtX2seNR2PW2EJSvPz20ENaT693Kfa8=
-    - secure: G8rRE17KDx83crRLQSEkIyvMbXlbpKDvIYoKE+y9Bg3qu79tsB/RrNdo6OGHx4x3KhBGpuo4NdN/4FAGS599P4W+KN3kNr9VFSCMJhJK59+KkYfGq2rX1oGDhB4B1xjVk0tj6bFIJ333hVLEYFviIKYxRSZfnKa0RmgBJZbvMfs=
-
 git:
   depth: 15
 
