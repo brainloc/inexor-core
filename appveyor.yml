@@ -87,7 +87,7 @@ before_build:
 
 
 build:
-  project: "%MAIN_FOLDER%build\PACKAGE.vcxproj"
+  project: "%MAIN_FOLDER%build\\PACKAGE.vcxproj"
   # enable MSBuild parallel builds
   parallel: true
 
