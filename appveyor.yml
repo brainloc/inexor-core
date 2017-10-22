@@ -87,7 +87,7 @@ before_build:
 
 
 build:
-  project: %MAIN_FOLDER%build\PACKAGE.vcxproj
+  project: "%MAIN_FOLDER%build\PACKAGE.vcxproj"
   # enable MSBuild parallel builds
   parallel: true
 
@@ -119,4 +119,4 @@ deploy:
       configuration: Release
 
 test_script:
-  - %MAIN_FOLDER%build\bin\unit_tests.exe
+  - C:\projects\inexor-game\%RELATIVE_PATH%build\bin\unit_tests.exe
