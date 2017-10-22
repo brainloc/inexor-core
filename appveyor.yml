@@ -119,4 +119,4 @@ deploy:
       configuration: Release
 
 test_script:
-  - C:\projects\inexor-game\%RELATIVE_PATH%build\bin\unit_tests.exe
+  - C:\projects\inexorgame\%RELATIVE_PATH%build\bin\unit_tests.exe
